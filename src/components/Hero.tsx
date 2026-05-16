@@ -19,7 +19,7 @@ export default function Hero() {
               <span className="bg-accent-orange text-[10px] px-4 py-1.5 font-black uppercase tracking-[0.2em] rounded-full mb-8 inline-block shadow-lg shadow-accent-orange/20">
                 Pietermaritzburg's Preferred Builder
               </span>
-              <h1 className="text-5xl md:text-7xl font-display font-black leading-[1.05] mb-6 tracking-tighter uppercase italic">
+              <h1 className="text-6xl md:text-8xl font-display font-black leading-[0.95] mb-8 tracking-tighter uppercase italic">
                 Precision <br />
                 <span className="text-accent-blue">Building.</span><br />
                 <span className="text-white">Professional Results.</span>
@@ -69,7 +69,7 @@ export default function Hero() {
               />
               <p className="relative z-10 text-[10px] text-slate-500 font-black uppercase tracking-widest bg-white/80 px-3 py-1 rounded">3D Visualization</p>
             </div>
-            <h3 className="font-black text-primary-900 uppercase tracking-tight text-xl mb-3">Design Services</h3>
+            <h3 className="font-black text-primary-900 uppercase tracking-tight text-2xl mb-4 leading-none">Design Services</h3>
             <p className="text-sm text-slate-500 leading-relaxed mb-6 font-medium">
               Visualize your dream space before the first brick is laid with our professional CAD & 3D visualization services.
             </p>

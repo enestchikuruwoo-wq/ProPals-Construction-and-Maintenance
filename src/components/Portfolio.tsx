@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Play, X, Layers, Film } from 'lucide-react';
+import { Search, Play, X, Layers, Film, ChevronLeft, ChevronRight } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 
@@ -13,6 +13,28 @@ export default function Portfolio() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [showBefore, setShowBefore] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const getGalleryImages = () => {
+    if (!selectedProject) return [];
+    let images = [selectedProject.image];
+    if (selectedProject.gallery && selectedProject.gallery.length > 0) {
+      images = [...images, ...selectedProject.gallery];
+    }
+    return images.filter(img => !!img);
+  };
+
+  const nextImage = (e: MouseEvent) => {
+    e.stopPropagation();
+    const images = getGalleryImages();
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = (e: MouseEvent) => {
+    e.stopPropagation();
+    const images = getGalleryImages();
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
@@ -32,7 +54,8 @@ export default function Portfolio() {
     const matchesSearch = searchQuery === '' || 
       project.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.tags?.some((t: string) => t.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      project.materials?.some((m: string) => m.toLowerCase().includes(searchQuery.toLowerCase()));
+      project.materials?.some((m: string) => m.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      project.services?.some((s: string) => s.toLowerCase().includes(searchQuery.toLowerCase()));
     
     return matchesCategory && matchesSearch;
   });
@@ -63,7 +86,7 @@ export default function Portfolio() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-4xl md:text-5xl font-display font-black text-primary-900 uppercase tracking-tighter italic"
+              className="text-5xl md:text-6xl lg:text-7xl font-display font-black text-primary-900 uppercase tracking-tighter italic leading-[0.95]"
             >
               Recent Projects That <br /> Showcase Our Excellence
             </motion.h2>
@@ -121,6 +144,7 @@ export default function Portfolio() {
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.3 }}
                 onClick={() => {
+                  setCurrentImageIndex(0);
                   setSelectedProject(project);
                   setShowBefore(false);
                 }}
@@ -199,18 +223,48 @@ export default function Portfolio() {
                       className="w-full h-full object-contain"
                     />
                   ) : (
-                    <motion.img 
-                      key={showBefore ? 'before' : 'after'}
+                    <motion.div 
+                      key={currentImageIndex}
                       initial={{ opacity: 0, scale: 1.1 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.5, ease: "anticipate" }}
-                      src={showBefore && selectedProject.beforeImage ? selectedProject.beforeImage : selectedProject.image} 
-                      alt={selectedProject.title}
-                      className="w-full h-full object-cover"
-                    />
+                      className="w-full h-full"
+                    >
+                      <img 
+                        src={showBefore && selectedProject.beforeImage ? selectedProject.beforeImage : getGalleryImages()[currentImageIndex]} 
+                        alt={selectedProject.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </motion.div>
                   )}
                 </AnimatePresence>
+
+                {/* Carousel Controls */}
+                {!selectedProject.videoUrl && !showBefore && getGalleryImages().length > 1 && (
+                  <>
+                    <button 
+                      onClick={prevImage}
+                      className="absolute left-4 z-30 w-10 h-10 bg-black/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-accent-orange transition-all opacity-0 group-hover/media:opacity-100"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <button 
+                      onClick={nextImage}
+                      className="absolute right-4 z-30 w-10 h-10 bg-black/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-accent-orange transition-all opacity-0 group-hover/media:opacity-100"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                    <div className="absolute bottom-6 right-6 z-30 flex gap-2">
+                      {getGalleryImages().map((_, idx) => (
+                        <div 
+                          key={idx}
+                          className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentImageIndex ? 'bg-accent-orange w-4' : 'bg-white/40'}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
 
                 {selectedProject.beforeImage && !selectedProject.videoUrl && (
                   <div className="absolute top-6 left-6 z-20 flex bg-white/10 backdrop-blur-md rounded-full p-1 border border-white/20 shadow-2xl">

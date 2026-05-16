@@ -53,7 +53,7 @@ export default function Contact() {
             viewport={{ once: true }}
           >
             <p className="text-accent-orange font-black tracking-[0.2em] uppercase mb-4 text-xs">Get In Touch</p>
-            <h2 className="text-4xl md:text-5xl font-display font-black text-white mb-8 uppercase tracking-tighter italic leading-none">
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-display font-black text-white mb-10 uppercase tracking-tighter italic leading-[0.95]">
               Let's Build Your <br /> Project Together
             </h2>
             <p className="text-gray-400 text-base mb-12 leading-relaxed">
@@ -77,8 +77,12 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 className="text-[10px] items-center flex font-black uppercase tracking-widest text-slate-400 mb-1">Call Us</h4>
-                  <p className="text-white font-bold leading-none mb-1">+27 62 415 9067</p>
-                  <p className="text-white font-bold leading-none">+27 69 382 2309</p>
+                  <p className="text-white font-bold leading-none mb-1">
+                    <a href="tel:+27624159067" className="hover:text-accent-blue transition-colors tracking-tight">+27 62 415 9067</a>
+                  </p>
+                  <p className="text-white font-bold leading-none">
+                    <a href="tel:+27693822309" className="hover:text-accent-blue transition-colors tracking-tight">+27 69 382 2309</a>
+                  </p>
                 </div>
               </div>
 
@@ -88,7 +92,9 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 className="text-[10px] items-center flex font-black uppercase tracking-widest text-slate-400 mb-1">Email Us</h4>
-                  <p className="text-white font-bold">quote@propals.co.za</p>
+                  <p className="text-white font-bold">
+                    <a href="mailto:quote@propals.co.za" className="hover:text-accent-blue transition-colors">quote@propals.co.za</a>
+                  </p>
                 </div>
               </div>
             </div>

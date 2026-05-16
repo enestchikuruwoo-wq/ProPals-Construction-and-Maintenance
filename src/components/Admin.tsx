@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart3, 
@@ -17,8 +17,27 @@ import {
   ChevronRight,
   Filter,
   LayoutDashboard,
-  X
+  X,
+  PieChart as PieChartIcon,
+  TrendingUp,
+  Award,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area
+} from 'recharts';
 import { auth, db, addProject } from '../lib/firebase';
 import { 
   signInWithPopup, 
@@ -45,6 +64,8 @@ import {
 export default function AdminPortal() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'projects'>('dashboard');
   
   // Data State
@@ -83,11 +104,30 @@ export default function AdminPortal() {
   }, [user]);
 
   const handleLogin = async () => {
+    if (isLoggingIn) return;
+    
+    setIsLoggingIn(true);
+    setLoginError(null);
+    
     try {
       const provider = new GoogleAuthProvider();
+      // Set custom parameters to force account selection if needed
+      provider.setCustomParameters({ prompt: 'select_account' });
+      
       await signInWithPopup(auth, provider);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error);
+      const errorMessage = error.message || '';
+      
+      if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
+        setLoginError('Login popup was closed. Please click below to try again.');
+      } else if (errorMessage.includes('Pending promise') || errorMessage.includes('INTERNAL ASSERTION FAILED')) {
+        setLoginError('The login engine encountered a temporary conflict. Please refresh the page if you cannot sign in.');
+      } else {
+        setLoginError('An error occurred. Check your connection and ensure popups are permitted.');
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -114,12 +154,33 @@ export default function AdminPortal() {
           </div>
           <h1 className="text-3xl font-display font-black text-primary-900 uppercase italic mb-4 tracking-tighter">Admin Portal</h1>
           <p className="text-slate-500 mb-8 font-medium">Access your project management dashboard and customer leads.</p>
+          
+          {loginError && (
+            <div className="mb-6">
+              <div className="p-4 bg-red-50 border border-red-100 rounded-lg text-red-600 text-xs font-bold uppercase tracking-widest text-center">
+                {loginError}
+              </div>
+              {loginError.includes('refresh') && (
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="mt-2 w-full text-[10px] font-black uppercase tracking-widest text-primary-900 border-b border-primary-900 mx-auto block py-1 transition-opacity hover:opacity-70"
+                >
+                  Refresh Page Now
+                </button>
+              )}
+            </div>
+          )}
+
           <button 
             onClick={handleLogin}
-            className="w-full bg-primary-900 text-white py-4 rounded-xl font-black uppercase tracking-[0.2em] text-xs hover:bg-black transition-all shadow-lg flex items-center justify-center gap-3"
+            disabled={isLoggingIn}
+            className="w-full bg-primary-900 text-white py-4 rounded-xl font-black uppercase tracking-[0.2em] text-xs hover:bg-black transition-all shadow-lg flex items-center justify-center gap-3 disabled:opacity-50"
           >
-            <img src="https://www.gstatic.com/firebase/anonymous-scan.png" className="w-5 h-5 hidden" alt="" />
-            Sign in with Google
+            {isLoggingIn ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              'Sign in with Google'
+            )}
           </button>
         </motion.div>
       </div>
@@ -195,7 +256,7 @@ export default function AdminPortal() {
       {/* Main Content */}
       <main className="flex-grow ml-72 p-12">
         <AnimatePresence mode="wait">
-          {activeTab === 'dashboard' && <DashboardView key="dashboard" leads={leads} projects={projects} />}
+          {activeTab === 'dashboard' && <DashboardView key="dashboard" leads={leads} projects={projects} setActiveTab={setActiveTab} />}
           {activeTab === 'leads' && <LeadsView key="leads" leads={leads} />}
           {activeTab === 'projects' && <ProjectsView key="projects" projects={projects} />}
         </AnimatePresence>
@@ -227,9 +288,48 @@ function SidebarLink({ icon, label, active, onClick, badge }: any) {
   );
 }
 
-function DashboardView({ leads, projects }: any) {
+function DashboardView({ leads, projects, setActiveTab }: any) {
   const newLeads = leads.filter((l: any) => l.status === 'new');
+  const completedLeads = leads.filter((l: any) => l.status === 'completed');
+  const conversionRate = leads.length > 0 ? Math.round((completedLeads.length / leads.length) * 100) : 0;
+
+  // Process data for charts
+  const serviceStats = leads.reduce((acc: Record<string, number>, lead: any) => {
+    const service = lead.service || 'Other';
+    acc[service] = (acc[service] || 0) + 1;
+    return acc;
+  }, {});
   
+  const serviceData: { name: string, value: number }[] = (Object.entries(serviceStats) as [string, number][]).map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const currentMonthIdx = new Date().getMonth();
+  const last6Months = Array.from({ length: 6 }, (_, i) => {
+    const idx = (currentMonthIdx - 5 + i + 12) % 12;
+    return months[idx];
+  });
+
+  const projectsByMonth = projects.reduce((acc: Record<string, number>, project: any) => {
+    const date = project.completionDate ? new Date(project.completionDate) : null;
+    if (date) {
+      const month = months[date.getMonth()];
+      acc[month] = (acc[month] || 0) + 1;
+    }
+    return acc;
+  }, {});
+
+  const trendData = last6Months.map(m => ({ 
+    name: m, 
+    projects: projectsByMonth[m] || 0,
+    leads: leads.filter((l: any) => {
+        const d = l.createdAt?.toDate ? l.createdAt.toDate() : null;
+        return d && months[d.getMonth()] === m;
+    }).length
+  }));
+
+  const COLORS = ['#0F172A', '#F97316', '#3B82F6', '#10B981', '#6366F1'];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -239,7 +339,7 @@ function DashboardView({ leads, projects }: any) {
     >
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-4xl font-display font-black text-primary-900 uppercase italic italic tracking-tighter mb-2">Welcome Back</h1>
+          <h1 className="text-5xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-2 leading-none">Welcome Back</h1>
           <p className="text-slate-500 font-medium">Here's what's happening with your business today.</p>
         </div>
         <div className="bg-white px-6 py-3 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4 text-xs font-black uppercase tracking-widest">
@@ -252,7 +352,124 @@ function DashboardView({ leads, projects }: any) {
         <StatCard title="Total Leads" value={leads.length} icon={<MessageSquare />} color="blue" />
         <StatCard title="New Inquiries" value={newLeads.length} icon={<Clock />} color="orange" />
         <StatCard title="Live Projects" value={projects.length} icon={<Users />} color="primary" />
-        <StatCard title="Conv. Rate" value="64%" icon={<CheckCircle2 />} color="green" />
+        <StatCard title="Conv. Rate" value={`${conversionRate}%`} icon={<CheckCircle2 />} color="green" />
+      </div>
+
+      {/* Analytics Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 bg-white p-10 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h3 className="text-lg font-black text-primary-900 uppercase tracking-tight flex items-center gap-2">
+                <TrendingUp size={20} className="text-accent-orange" />
+                Performance Trends
+              </h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Growth & Conversions</p>
+            </div>
+            <div className="flex gap-4">
+               <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-primary-900"></div>
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Leads</span>
+               </div>
+               <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-accent-orange"></div>
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Projects</span>
+               </div>
+            </div>
+          </div>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={trendData}>
+                <defs>
+                  <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0F172A" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#0F172A" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorProjects" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#F97316" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#F97316" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 900, fill: '#94A3B8' }}
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 900, fill: '#94A3B8' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    border: 'none', 
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                    fontSize: '10px',
+                    fontWeight: '900',
+                    textTransform: 'uppercase'
+                  }} 
+                />
+                <Area type="monotone" dataKey="leads" stroke="#0F172A" strokeWidth={3} fillOpacity={1} fill="url(#colorLeads)" />
+                <Area type="monotone" dataKey="projects" stroke="#F97316" strokeWidth={3} fillOpacity={1} fill="url(#colorProjects)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-white p-10 rounded-2xl border border-slate-100 shadow-sm">
+          <h3 className="text-lg font-black text-primary-900 uppercase tracking-tight flex items-center gap-2 mb-8">
+            <PieChartIcon size={20} className="text-accent-blue" />
+            Popular Services
+          </h3>
+          <div className="h-[200px] w-full relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={serviceData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {serviceData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    border: 'none', 
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                    fontSize: '10px',
+                    fontWeight: '900',
+                    textTransform: 'uppercase'
+                  }} 
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-2xl font-black text-primary-900">{leads.length}</span>
+              <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Total Leads</span>
+            </div>
+          </div>
+          <div className="mt-6 space-y-3">
+            {serviceData.slice(0, 3).map((item, index) => (
+              <div key={item.name} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">{item.name}</span>
+                </div>
+                <span className="text-[10px] font-black text-primary-900">{leads.length > 0 ? Math.round(((item.value as number) / leads.length) * 100) : 0}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
@@ -289,19 +506,46 @@ function DashboardView({ leads, projects }: any) {
           </div>
         </div>
 
-        <div className="bg-primary-900 rounded-2xl p-10 shadow-xl text-white relative overflow-hidden">
+        <div className="bg-primary-900 rounded-3xl p-10 shadow-2xl text-white relative overflow-hidden flex flex-col justify-between">
           <div className="relative z-10">
             <h3 className="text-xl font-black uppercase tracking-tight mb-4 italic">Quick Actions</h3>
-            <p className="text-white/60 text-sm mb-10 max-w-xs">Efficiently manage your portfolio and respond to potential clients.</p>
+            <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-10 max-w-xs leading-relaxed">
+              Accelerate your workflow with one-click access to common tasks.
+            </p>
             
             <div className="grid grid-cols-2 gap-4">
-              <QuickActionBtn icon={<Plus />} label="New Project" color="accent-orange" />
-              <QuickActionBtn icon={<Users />} label="Manage Team" color="white/10" />
-              <QuickActionBtn icon={<Settings />} label="Site Config" color="white/10" />
-              <QuickActionBtn icon={<ExternalLink />} label="View Site" color="white/10" />
+              <QuickActionBtn 
+                icon={<Plus size={20} />} 
+                label="New Project" 
+                description="Expand Portfolio"
+                color="orange" 
+                onClick={() => setActiveTab('projects')}
+              />
+              <QuickActionBtn 
+                icon={<Users size={20} />} 
+                label="Leads" 
+                description="Manage Clients"
+                color="navy"
+                onClick={() => setActiveTab('leads')}
+              />
+              <QuickActionBtn 
+                icon={<BarChart3 size={20} />} 
+                label="Reports" 
+                description="Export Data"
+                color="navy"
+                onClick={() => alert('Report generation feature coming soon.')}
+              />
+              <QuickActionBtn 
+                icon={<ExternalLink size={20} />} 
+                label="Preview" 
+                description="Live Site"
+                color="navy"
+                onClick={() => window.open('/', '_blank')}
+              />
             </div>
           </div>
           <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-accent-orange/10 rounded-full blur-3xl"></div>
+          <div className="absolute -left-10 -top-10 w-40 h-40 bg-accent-blue/10 rounded-full blur-2xl"></div>
         </div>
       </div>
     </motion.div>
@@ -327,13 +571,30 @@ function StatCard({ title, value, icon, color }: any) {
   );
 }
 
-function QuickActionBtn({ icon, label, color }: any) {
+function QuickActionBtn({ icon, label, description, color, onClick }: any) {
   return (
-    <button className={`w-full flex flex-col items-center gap-3 p-6 rounded-xl border border-white/5 transition-all hover:scale-105 ${
-      color === 'accent-orange' ? 'bg-accent-orange text-white' : 'bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'
-    }`}>
-      {icon}
-      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+    <button 
+      onClick={onClick}
+      className={`w-full flex flex-col items-start gap-4 p-5 rounded-2xl border transition-all text-left relative group overflow-hidden ${
+        color === 'orange' 
+          ? 'bg-accent-orange border-accent-orange text-white shadow-lg shadow-accent-orange/20 hover:scale-[1.02]' 
+          : 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/20'
+      }`}
+    >
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+        color === 'orange' ? 'bg-white/20' : 'bg-white/5 group-hover:bg-accent-orange'
+      }`}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">{label}</p>
+        <p className={`text-[8px] font-bold uppercase tracking-tight ${color === 'orange' ? 'text-white/70' : 'text-white/40'}`}>
+          {description}
+        </p>
+      </div>
+      <div className="absolute top-2 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+        <ArrowRight size={12} className={color === 'orange' ? 'text-white' : 'text-accent-orange'} />
+      </div>
     </button>
   );
 }
@@ -365,7 +626,7 @@ function LeadsView({ leads }: any) {
     >
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-4xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-2">Customer Leads</h1>
+          <h1 className="text-5xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-2 leading-none">Customer Leads</h1>
           <p className="text-slate-500 font-medium">Manage and respond to project inquiries.</p>
         </div>
         <div className="flex gap-4">
@@ -391,8 +652,12 @@ function LeadsView({ leads }: any) {
               <tr key={lead.id} className="hover:bg-slate-50/50 transition-colors">
                 <td className="px-8 py-6">
                   <p className="font-black text-primary-900 uppercase tracking-tight text-sm">{lead.name}</p>
-                  <p className="text-[10px] text-slate-400 font-medium">{lead.email}</p>
-                  <p className="text-[10px] text-slate-400 font-medium">{lead.phone}</p>
+                  <p className="text-[10px] text-slate-400 font-medium hover:text-accent-blue transition-colors">
+                    <a href={`mailto:${lead.email}`}>{lead.email}</a>
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-medium hover:text-accent-blue transition-colors">
+                    <a href={`tel:${lead.phone.replace(/\s/g, '')}`}>{lead.phone}</a>
+                  </p>
                 </td>
                 <td className="px-8 py-6">
                   <span className="bg-primary-900/5 text-primary-900 px-3 py-1 rounded-sm text-[10px] font-black uppercase tracking-widest">
@@ -453,6 +718,7 @@ function LeadsView({ leads }: any) {
 function ProjectsView({ projects }: any) {
   const [isAdding, setIsAdding] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadMethod, setUploadMethod] = useState<'url' | 'file'>('file');
   const [newProject, setNewProject] = useState({
     title: '',
     category: 'Remodel',
@@ -461,10 +727,51 @@ function ProjectsView({ projects }: any) {
     tags: '',
     materials: '',
     completionDate: '',
-    image: 'https://images.unsplash.com/photo-1556912177-c540306ea5ae?auto=format&fit=crop&q=80&w=1200', // Placeholder
+    image: '',
+    gallery: [] as string[],
     beforeImage: '',
     videoUrl: ''
   });
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>, target: 'image' | 'gallery' = 'image') => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (target === 'image') {
+      const file = files[0];
+      if (file.size > 800000) {
+        alert('File is too large. Max 800KB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewProject(prev => ({ ...prev, image: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    } else {
+      const remaining = 6 - (newProject.gallery?.length || 0);
+      const toProcess = Array.from(files).slice(0, remaining);
+
+      toProcess.forEach((file: File) => {
+        if (file.size > 500000) return;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setNewProject(prev => ({ 
+            ...prev, 
+            gallery: [...(prev.gallery || []), reader.result as string] 
+          }));
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const removeGalleryImage = (index: number) => {
+    setNewProject(prev => ({
+      ...prev,
+      gallery: (prev.gallery || []).filter((_, i) => i !== index)
+    }));
+  };
 
   const deleteProject = async (id: string) => {
     if (!confirm('Permanently delete this project from portfolio?')) return;
@@ -517,7 +824,7 @@ function ProjectsView({ projects }: any) {
     >
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-4xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-2">Project Portfolio</h1>
+          <h1 className="text-5xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-2 leading-none">Project Portfolio</h1>
           <p className="text-slate-500 font-medium">Add and manage showcase projects.</p>
         </div>
         <button 
@@ -644,14 +951,104 @@ function ProjectsView({ projects }: any) {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Image URL</label>
-                  <input 
-                    required
-                    value={newProject.image}
-                    onChange={e => setNewProject(p => ({ ...p, image: e.target.value }))}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded focus:ring-2 focus:ring-accent-orange outline-none"
-                  />
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Project Image</label>
+                    <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
+                      <button 
+                        type="button"
+                        onClick={() => setUploadMethod('file')}
+                        className={`px-3 py-1 text-[8px] font-black uppercase tracking-widest rounded-md transition-all ${uploadMethod === 'file' ? 'bg-white text-primary-900 shadow-sm' : 'text-slate-400'}`}
+                      >
+                        Upload
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setUploadMethod('url')}
+                        className={`px-3 py-1 text-[8px] font-black uppercase tracking-widest rounded-md transition-all ${uploadMethod === 'url' ? 'bg-white text-primary-900 shadow-sm' : 'text-slate-400'}`}
+                      >
+                        URL
+                      </button>
+                    </div>
+                  </div>
+
+                  {uploadMethod === 'file' ? (
+                    <div className="space-y-4">
+                      <div className="relative group">
+                        <input 
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          id="project-image-upload"
+                          className="hidden"
+                        />
+                        <label 
+                          htmlFor="project-image-upload"
+                          className="w-full h-40 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-accent-orange hover:bg-orange-50 transition-all overflow-hidden"
+                        >
+                          {newProject.image ? (
+                            <img src={newProject.image} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <>
+                              <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 group-hover:text-accent-orange group-hover:bg-white transition-colors">
+                                <Upload size={20} />
+                              </div>
+                              <div className="text-center">
+                                <p className="text-[10px] font-black text-primary-900 uppercase tracking-widest">Click to select</p>
+                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">MAX 800KB</p>
+                              </div>
+                            </>
+                          )}
+                        </label>
+                        {newProject.image && (
+                          <button 
+                            type="button"
+                            onClick={() => setNewProject(p => ({ ...p, image: '' }))}
+                            className="absolute top-2 right-2 p-1 bg-white/90 backdrop-blur shadow-sm rounded-full text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <input 
+                      required
+                      value={newProject.image}
+                      onChange={e => setNewProject(p => ({ ...p, image: e.target.value }))}
+                      placeholder="https://images.unsplash.com/..."
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded focus:ring-2 focus:ring-accent-orange outline-none"
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Project Gallery (Max 6)</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {(newProject.gallery || []).map((img, idx) => (
+                      <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group">
+                        <img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
+                        <button 
+                          type="button"
+                          onClick={() => removeGalleryImage(idx)}
+                          className="absolute top-1 right-1 p-1 bg-white/90 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    ))}
+                    {(newProject.gallery?.length || 0) < 6 && (
+                      <label className="aspect-square border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center text-slate-300 hover:border-accent-orange hover:text-accent-orange cursor-pointer transition-all">
+                        <Upload size={16} />
+                        <input 
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => handleFileChange(e, 'gallery')}
+                        />
+                      </label>
+                    )}
+                  </div>
                 </div>
 
                 <div>

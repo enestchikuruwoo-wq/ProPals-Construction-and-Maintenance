@@ -37,7 +37,7 @@ export default function Navbar() {
               <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[16px] border-white"></div>
             </div>
             <div>
-              <h1 className="text-xl font-black text-primary-900 leading-tight uppercase tracking-tighter">ProPals</h1>
+              <h1 className="text-2xl font-black text-primary-900 leading-tight uppercase tracking-tighter">ProPals</h1>
               <p className="text-[8px] font-bold text-accent-orange uppercase tracking-[0.2em] -mt-1">Construction & Maintenance</p>
             </div>
           </motion.div>

@@ -22,5 +22,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // Connectivity Test
+    match /test/connection {
+      allow read: if true;
+    }
   }
 }

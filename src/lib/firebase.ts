@@ -1,12 +1,28 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore, collection, addDoc, serverTimestamp, doc, getDocFromServer } from 'firebase/firestore';
+import { getAuth, indexedDBLocalPersistence, initializeAuth } from 'firebase/auth';
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  serverTimestamp, 
+  doc, 
+  getDocFromServer,
+  initializeFirestore
+} from 'firebase/firestore';
 // @ts-ignore
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const auth = getAuth(app);
+
+// Initialize Firestore with long polling to bypass certain network restrictions
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+}, firebaseConfig.firestoreDatabaseId);
+
+// Initialize Auth with cross-environment persistent storage
+export const auth = initializeAuth(app, {
+  persistence: indexedDBLocalPersistence
+});
 
 // Connectivity Test
 async function testConnection() {
