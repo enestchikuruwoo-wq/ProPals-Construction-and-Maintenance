@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "Lead": {
+      "title": "Lead",
+      "description": "Potential client inquiry from the contact form.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Full name of the lead." },
+        "email": { "type": "string", "format": "email", "description": "Contact email address." },
+        "phone": { "type": "string", "description": "Contact phone number." },
+        "service": { "type": "string", "description": "The service they are interested in (e.g., Remodel, Painting)." },
+        "message": { "type": "string", "description": "Detailed message or project description." },
+        "status": { "type": "string", "enum": ["new", "contacted", "in-progress", "completed"], "description": "Processing status of the lead." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the lead was submitted." }
+      },
+      "required": ["name", "email", "service", "createdAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A portfolio project showcase.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "image": { "type": "string" },
+        "beforeImage": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "description": { "type": "string" },
+        "services": { "type": "array", "items": { "type": "string" } },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "materials": { "type": "array", "items": { "type": "string" } },
+        "completionDate": { "type": "string" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "category", "image"]
+    }
+  },
+  "firestore": {
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Collection of customer leads for CRM management."
+    },
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Portfolio projects displayed on the website."
+    }
+  }
+}

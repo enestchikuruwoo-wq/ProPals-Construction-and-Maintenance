@@ -1,0 +1,6 @@
+{
+  "name": "ProPals Construction & Maintenance",
+  "description": "Professional construction and maintenance services in Pietermaritzburg, specializing in remodels, tiling, painting, and home repairs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
