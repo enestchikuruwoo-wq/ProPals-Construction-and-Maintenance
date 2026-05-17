@@ -34,6 +34,21 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["title", "category", "image"]
+    },
+    "Testimonial": {
+      "title": "Testimonial",
+      "description": "Client feedback and ratings.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "quote": { "type": "string" },
+        "rating": { "type": "number", "minimum": 1, "maximum": 5 },
+        "location": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "quote", "rating", "createdAt"]
     }
   },
   "firestore": {
@@ -44,6 +59,10 @@
     "/projects/{projectId}": {
       "schema": "Project",
       "description": "Portfolio projects displayed on the website."
+    },
+    "/testimonials/{testimonialId}": {
+      "schema": "Testimonial",
+      "description": "Publicly submitted client reviews."
     }
   }
 }

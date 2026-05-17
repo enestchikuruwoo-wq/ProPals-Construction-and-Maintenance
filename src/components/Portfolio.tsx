@@ -86,7 +86,7 @@ export default function Portfolio() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-5xl md:text-6xl lg:text-7xl font-display font-black text-primary-900 uppercase tracking-tighter italic leading-[0.95]"
+              className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-primary-900 uppercase tracking-tighter italic leading-[0.95]"
             >
               Recent Projects That <br /> Showcase Our Excellence
             </motion.h2>

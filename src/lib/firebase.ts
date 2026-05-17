@@ -99,3 +99,17 @@ export const addProject = async (data: any) => {
     handleFirestoreError(error, OperationType.CREATE, path);
   }
 };
+
+export const submitTestimonial = async (data: { name: string; role: string; quote: string; rating: number; location: string }) => {
+  const path = 'testimonials';
+  try {
+    const docRef = await addDoc(collection(db, path), {
+      ...data,
+      status: 'pending', // Default to pending for moderation
+      createdAt: serverTimestamp(),
+    });
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+};

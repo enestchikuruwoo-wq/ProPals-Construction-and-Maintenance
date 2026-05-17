@@ -53,7 +53,7 @@ export default function Contact() {
             viewport={{ once: true }}
           >
             <p className="text-accent-orange font-black tracking-[0.2em] uppercase mb-4 text-xs">Get In Touch</p>
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-display font-black text-white mb-10 uppercase tracking-tighter italic leading-[0.95]">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-white mb-10 uppercase tracking-tighter italic leading-[0.95]">
               Let's Build Your <br /> Project Together
             </h2>
             <p className="text-gray-400 text-base mb-12 leading-relaxed">

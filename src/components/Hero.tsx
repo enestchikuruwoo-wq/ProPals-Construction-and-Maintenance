@@ -19,10 +19,10 @@ export default function Hero() {
               <span className="bg-accent-orange text-[10px] px-4 py-1.5 font-black uppercase tracking-[0.2em] rounded-full mb-8 inline-block shadow-lg shadow-accent-orange/20">
                 Pietermaritzburg's Preferred Builder
               </span>
-              <h1 className="text-6xl md:text-8xl font-display font-black leading-[0.95] mb-8 tracking-tighter uppercase italic">
+              <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-black leading-[0.95] mb-8 tracking-tighter uppercase italic">
                 Precision <br />
-                <span className="text-accent-blue">Building.</span><br />
-                <span className="text-white">Professional Results.</span>
+                <span className="text-accent-blue font-display">Building.</span><br />
+                <span className="text-white font-display">Professional Results.</span>
               </h1>
               <p className="text-blue-100 max-w-lg text-base md:text-lg leading-relaxed mb-10 font-medium opactiy-90">
                 Providing top-tier construction, remodelling, and maintenance services for homeowners and businesses in Pietermaritzburg and surrounding areas.

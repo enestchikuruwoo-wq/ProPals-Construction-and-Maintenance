@@ -22,7 +22,8 @@ import {
   TrendingUp,
   Award,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Star
 } from 'lucide-react';
 import {
   BarChart,
@@ -66,11 +67,12 @@ export default function AdminPortal() {
   const [loading, setLoading] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'projects'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'projects' | 'testimonials' | 'estimator'>('dashboard');
   
   // Data State
   const [leads, setLeads] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
+  const [testimonials, setTestimonials] = useState<any[]>([]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -97,9 +99,17 @@ export default function AdminPortal() {
       setProjects(projectsData);
     });
 
+    // Real-time snapshot for testimonials
+    const testimonialsQuery = query(collection(db, 'testimonials'), orderBy('createdAt', 'desc'));
+    const unsubscribeTestimonials = onSnapshot(testimonialsQuery, (snapshot) => {
+      const testimonialsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTestimonials(testimonialsData);
+    });
+
     return () => {
       unsubscribeLeads();
       unsubscribeProjects();
+      unsubscribeTestimonials();
     };
   }, [user]);
 
@@ -234,6 +244,18 @@ export default function AdminPortal() {
             active={activeTab === 'projects'} 
             onClick={() => setActiveTab('projects')} 
           />
+          <SidebarLink 
+            icon={<MessageSquare size={18} />} 
+            label="Reviews" 
+            active={activeTab === 'testimonials'} 
+            onClick={() => setActiveTab('testimonials')} 
+          />
+          <SidebarLink 
+            icon={<TrendingUp size={18} />} 
+            label="Estimator" 
+            active={activeTab === 'estimator'} 
+            onClick={() => setActiveTab('estimator')} 
+          />
         </nav>
 
         <div className="mt-auto pt-8 border-t border-white/10">
@@ -259,6 +281,8 @@ export default function AdminPortal() {
           {activeTab === 'dashboard' && <DashboardView key="dashboard" leads={leads} projects={projects} setActiveTab={setActiveTab} />}
           {activeTab === 'leads' && <LeadsView key="leads" leads={leads} />}
           {activeTab === 'projects' && <ProjectsView key="projects" projects={projects} />}
+          {activeTab === 'testimonials' && <TestimonialsView key="testimonials" testimonials={testimonials} />}
+          {activeTab === 'estimator' && <CostEstimatorView key="estimator" />}
         </AnimatePresence>
       </main>
     </div>
@@ -1085,6 +1109,246 @@ function ProjectsView({ projects }: any) {
           </div>
         )}
       </AnimatePresence>
+    </motion.div>
+  );
+}
+
+function TestimonialsView({ testimonials }: any) {
+  const updateStatus = async (id: string, newStatus: string) => {
+    try {
+      await updateDoc(doc(db, 'testimonials', id), { status: newStatus });
+    } catch (error) {
+      console.error('Update failed:', error);
+    }
+  };
+
+  const deleteTestimonial = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this testimonial?')) return;
+    try {
+      await deleteDoc(doc(db, 'testimonials', id));
+    } catch (error) {
+      console.error('Delete failed:', error);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="space-y-12"
+    >
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-5xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-2 leading-none">Client Reviews</h1>
+          <p className="text-slate-500 font-medium">Manage customer feedback and testimonials.</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-100">
+              <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Client</th>
+              <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Feedback</th>
+              <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Rating</th>
+              <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+              <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {testimonials.map((t: any) => (
+              <tr key={t.id} className="hover:bg-slate-50/50 transition-colors">
+                <td className="px-8 py-6">
+                  <p className="font-black text-primary-900 uppercase tracking-tight text-sm">{t.name}</p>
+                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">{t.role}</p>
+                  <p className="text-[10px] text-accent-blue font-black uppercase tracking-widest">{t.location}</p>
+                </td>
+                <td className="px-8 py-6 max-w-md">
+                  <p className="text-slate-600 text-xs italic line-clamp-3 font-medium">"{t.quote}"</p>
+                </td>
+                <td className="px-8 py-6">
+                  <div className="flex">
+                    {[...Array(5)].map((_, i) => (
+                      <Star 
+                        key={i} 
+                        className={`w-3 h-3 ${i < (t.rating || 0) ? 'text-accent-orange fill-accent-orange' : 'text-slate-200'}`} 
+                      />
+                    ))}
+                  </div>
+                </td>
+                <td className="px-8 py-6">
+                  <select 
+                    value={t.status}
+                    onChange={(e) => updateStatus(t.id, e.target.value)}
+                    className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full outline-none appearance-none cursor-pointer border-none ${
+                        t.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'
+                    }`}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                  </select>
+                </td>
+                <td className="px-8 py-6 text-right">
+                  <button 
+                    onClick={() => deleteTestimonial(t.id)}
+                    className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {testimonials.length === 0 && (
+          <div className="py-24 text-center">
+            <MessageSquare size={48} className="mx-auto text-slate-200 mb-6" />
+            <h4 className="text-lg font-black text-primary-900 uppercase tracking-tight">No Reviews Found</h4>
+            <p className="text-slate-400 text-sm max-w-xs mx-auto mt-2">When clients submit feedback, it will appear here for your review.</p>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+const CONSTRUCTION_RATES = {
+  tiling: { label: 'Tiling (per m²)', rate: 250 },
+  painting: { label: 'Painting (per m²)', rate: 85 },
+  plumbing: { label: 'Plumbing (per fixture)', rate: 1200 },
+  electrical: { label: 'Electrical (per point)', rate: 450 },
+  brickwork: { label: 'Brickwork (per m²)', rate: 650 },
+  plastering: { label: 'Plastering (per m²)', rate: 120 },
+  roofing: { label: 'Roofing (per m²)', rate: 850 },
+  ceiling: { label: 'Ceiling Installation (per m²)', rate: 180 }
+};
+
+function CostEstimatorView() {
+  const [selections, setSelections] = useState<Record<string, number>>({});
+  const [rates, setRates] = useState<Record<string, number>>(
+    Object.entries(CONSTRUCTION_RATES).reduce((acc, [key, item]) => ({ ...acc, [key]: item.rate }), {})
+  );
+  const [markup, setMarkup] = useState(25); // Default 25% profit markup
+
+  const updateQuantity = (key: string, qty: string) => {
+    const val = parseFloat(qty) || 0;
+    setSelections(prev => ({ ...prev, [key]: val }));
+  };
+
+  const updateRate = (key: string, rate: string) => {
+    const val = parseFloat(rate) || 0;
+    setRates(prev => ({ ...prev, [key]: val }));
+  };
+
+  const calculateSubtotal = () => {
+    return Object.entries(selections).reduce((acc: number, [key, qty]: [string, number]) => {
+      const rate = rates[key] || 0;
+      return acc + (qty * rate);
+    }, 0);
+  };
+
+  const subtotal = calculateSubtotal();
+  const profit = (subtotal * markup) / 100;
+  const total = subtotal + profit;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="space-y-12"
+    >
+      <div>
+        <h1 className="text-5xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-2 leading-none">Cost Estimator</h1>
+        <p className="text-slate-500 font-medium">Quick estimate tool based on standard South African rates (ZAR).</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-100 p-8 shadow-sm">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-8 border-b border-slate-50 pb-4">Service Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+              {Object.entries(CONSTRUCTION_RATES).map(([key, item]) => (
+                <div key={key} className="group">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs font-black text-primary-900 uppercase tracking-tight">{item.label}</label>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-slate-400 font-bold">R</span>
+                      <input 
+                        type="number"
+                        value={rates[key]}
+                        onChange={(e) => updateRate(key, e.target.value)}
+                        className="w-16 bg-transparent border-b border-slate-100 text-[10px] text-slate-500 font-bold focus:border-accent-orange outline-none transition-colors text-right"
+                      />
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <input 
+                      type="number"
+                      placeholder="0"
+                      onChange={(e) => updateQuantity(key, e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-lg text-sm font-bold focus:ring-2 focus:ring-accent-orange outline-none transition-all"
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase tracking-widest">Qty</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-primary-900 text-white p-10 rounded-2xl shadow-2xl shadow-primary-900/40 relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-accent-orange/10 rounded-full blur-3xl" />
+            
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-8 leading-none">Estimate Summary</h3>
+            
+            <div className="space-y-6 mb-10 pb-10 border-b border-white/10">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-bold opacity-60">Subtotal (Labour & Material)</span>
+                <span className="font-black tracking-tight">R {subtotal.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <div className="space-y-1">
+                   <span className="text-sm font-bold opacity-60 block text-white/40">Profit Markup (%)</span>
+                   <input 
+                    type="number" 
+                    value={markup}
+                    onChange={(e) => setMarkup(parseFloat(e.target.value) || 0)}
+                    className="w-16 bg-white/10 border-none px-2 py-1 rounded text-xs font-black outline-none focus:ring-1 focus:ring-accent-orange"
+                   />
+                </div>
+                <span className="font-black tracking-tight text-accent-orange">+ R {profit.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-accent-blue">Estimated Total</p>
+              <p className="text-6xl font-display font-black tracking-tighter italic leading-none">
+                R {total.toLocaleString()}
+              </p>
+            </div>
+
+            <button 
+              onClick={() => window.print()}
+              className="w-full mt-12 bg-white/10 hover:bg-white/20 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5 flex items-center justify-center gap-2"
+            >
+              Export Estimate
+            </button>
+          </div>
+
+          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-primary-900 mb-3 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-accent-orange rounded-full" />
+              Contractor Note
+            </h4>
+            <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic">
+              These rates are approximations for the Pietermaritzburg area. Material costs may vary significantly based on brand selection and site conditions. Always conduct a site visit before finalizing a quote.
+            </p>
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 }

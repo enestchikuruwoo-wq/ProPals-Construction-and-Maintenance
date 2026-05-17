@@ -23,6 +23,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Testimonials
+    match /testimonials/{testimonialId} {
+      allow read: if true; // In app we will filter for approved ones normally, but rules permit reading all for now (simple)
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
     // Connectivity Test
     match /test/connection {
       allow read: if true;
