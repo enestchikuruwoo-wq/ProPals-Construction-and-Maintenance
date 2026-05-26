@@ -59,7 +59,7 @@ export default function Services() {
             <motion.h2 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-primary-900 uppercase tracking-tighter italic leading-[0.95]"
+              className="text-4xl md:text-5xl lg:text-6xl font-display font-extrabold text-primary-900 tracking-tight leading-tight"
             >
               Specialized Services <br /> For Your Project
             </motion.h2>

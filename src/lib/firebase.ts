@@ -7,7 +7,8 @@ import {
   serverTimestamp, 
   doc, 
   getDocFromServer,
-  initializeFirestore
+  initializeFirestore,
+  updateDoc
 } from 'firebase/firestore';
 // @ts-ignore
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -100,12 +101,24 @@ export const addProject = async (data: any) => {
   }
 };
 
-export const submitTestimonial = async (data: { name: string; role: string; quote: string; rating: number; location: string }) => {
+export const updateProject = async (id: string, data: any) => {
+  const path = `projects/${id}`;
+  try {
+    await updateDoc(doc(db, 'projects', id), {
+      ...data,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+};
+
+export const submitTestimonial = async (data: { name: string; role: string; quote: string; rating: number; location: string; status?: string; invoiceNumber?: string }) => {
   const path = 'testimonials';
   try {
     const docRef = await addDoc(collection(db, path), {
       ...data,
-      status: 'pending', // Default to pending for moderation
+      status: data.status || 'pending', // Default to pending for moderation, allow override
       createdAt: serverTimestamp(),
     });
     return docRef.id;

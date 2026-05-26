@@ -31,7 +31,26 @@
         "materials": { "type": "array", "items": { "type": "string" } },
         "completionDate": { "type": "string" },
         "order": { "type": "number" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "milestones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "completed": { "type": "boolean" }
+            },
+            "required": ["id", "title", "completed"]
+          },
+          "description": "Array of project progress milestones"
+        },
+        "progress": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Project completion progress percentage"
+        }
       },
       "required": ["title", "category", "image"]
     },

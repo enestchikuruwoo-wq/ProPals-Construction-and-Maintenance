@@ -30,9 +30,9 @@ export default function Footer({ onAdminClick }: { onAdminClick?: () => void }) 
               <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-primary-900 border border-slate-100 shadow-sm">
                 <Mail className="w-5 h-5" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] uppercase font-black text-slate-400 leading-none mb-1 tracking-widest">Email Us</p>
-                <a href="#contact" className="text-xs font-black text-primary-900 hover:text-accent-orange transition-colors">quote@propals.co.za</a>
+                <a href="mailto:quote@propals.co.za" className="text-xs font-black text-primary-900 hover:text-accent-orange transition-colors break-all block md:inline">quote@propals.co.za</a>
               </div>
             </div>
           </div>
@@ -45,7 +45,7 @@ export default function Footer({ onAdminClick }: { onAdminClick?: () => void }) 
               </a>
             </div>
             <div className="flex gap-2">
-              <SocialIcon href="https://www.facebook.com/propertypals" icon={<Facebook size={14} />} />
+              <SocialIcon href="https://facebook.com/propertypals" icon={<Facebook size={14} />} />
               <SocialIcon href="#" icon={<Instagram size={14} />} />
               <SocialIcon href="#" icon={<Linkedin size={14} />} />
             </div>
@@ -53,7 +53,7 @@ export default function Footer({ onAdminClick }: { onAdminClick?: () => void }) 
         </div>
 
         <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
-          <p>© {currentYear} ProPals Construction & Maintenance</p>
+          <p>© {currentYear} PropertyPals Construction & Maintenance</p>
           <div className="flex gap-6">
             <button onClick={() => setActiveModal('privacy')} className="hover:text-accent-orange transition-colors">Privacy</button>
             <button onClick={() => setActiveModal('terms')} className="hover:text-accent-orange transition-colors">Terms</button>
@@ -94,7 +94,7 @@ export default function Footer({ onAdminClick }: { onAdminClick?: () => void }) 
               <div className="prose prose-slate max-w-none">
                 {activeModal === 'privacy' ? (
                   <>
-                    <h2 className="text-4xl font-display font-black text-primary-900 uppercase tracking-tighter mb-8 italic">Privacy Policy</h2>
+                    <h2 className="text-4xl font-display font-extrabold text-primary-900 tracking-tight mb-8">Privacy Policy</h2>
                     <div className="space-y-6 text-slate-600 font-medium text-sm leading-relaxed">
                       <p>Propals Construction & Maintenance ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your personal information when you visit our website.</p>
                       
@@ -116,7 +116,7 @@ export default function Footer({ onAdminClick }: { onAdminClick?: () => void }) 
                   </>
                 ) : (
                   <>
-                    <h2 className="text-4xl font-display font-black text-primary-900 uppercase tracking-tighter mb-8 italic">Terms of Use</h2>
+                    <h2 className="text-4xl font-display font-extrabold text-primary-900 tracking-tight mb-8">Terms of Use</h2>
                     <div className="space-y-6 text-slate-600 font-medium text-sm leading-relaxed">
                       <p>By accessing this website, you are agreeing to be bound by these website Terms and Conditions of Use, all applicable laws and regulations, and agree that you are responsible for compliance with any applicable local laws.</p>
                       

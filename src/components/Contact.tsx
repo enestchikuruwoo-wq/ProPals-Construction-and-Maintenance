@@ -53,7 +53,7 @@ export default function Contact() {
             viewport={{ once: true }}
           >
             <p className="text-accent-orange font-black tracking-[0.2em] uppercase mb-4 text-xs">Get In Touch</p>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-white mb-10 uppercase tracking-tighter italic leading-[0.95]">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-extrabold text-white mb-10 tracking-tight leading-tight">
               Let's Build Your <br /> Project Together
             </h2>
             <p className="text-gray-400 text-base mb-12 leading-relaxed">
@@ -90,10 +90,10 @@ export default function Contact() {
                 <div className="bg-white/10 p-4 rounded border border-white/10 group-hover:bg-accent-orange transition-colors duration-300">
                   <Mail className="w-6 h-6 text-accent-blue group-hover:text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h4 className="text-[10px] items-center flex font-black uppercase tracking-widest text-slate-400 mb-1">Email Us</h4>
                   <p className="text-white font-bold">
-                    <a href="mailto:quote@propals.co.za" className="hover:text-accent-blue transition-colors">quote@propals.co.za</a>
+                    <a href="mailto:quote@propals.co.za" className="hover:text-accent-blue transition-colors break-all block">quote@propals.co.za</a>
                   </p>
                 </div>
               </div>

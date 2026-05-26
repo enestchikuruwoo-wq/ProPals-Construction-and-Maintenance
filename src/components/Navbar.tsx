@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Menu, X, Hammer } from 'lucide-react';
+import PropertyPalsLogo from './PropertyPalsLogo';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -30,16 +31,10 @@ export default function Navbar() {
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center space-x-3 cursor-pointer"
+            className="cursor-pointer"
             onClick={() => window.scrollTo(0, 0)}
           >
-            <div className="w-10 h-10 bg-primary-900 flex items-center justify-center rounded-sm">
-              <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[16px] border-white"></div>
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-primary-900 leading-tight uppercase tracking-tighter">ProPals</h1>
-              <p className="text-[8px] font-bold text-accent-orange uppercase tracking-[0.2em] -mt-1">Construction & Maintenance</p>
-            </div>
+            <PropertyPalsLogo size={42} showText={true} />
           </motion.div>
 
           {/* Desktop Nav */}

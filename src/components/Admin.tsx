@@ -6,6 +6,7 @@ import {
   Settings, 
   LogOut, 
   Plus, 
+  PlusCircle,
   Search, 
   Trash2, 
   Edit, 
@@ -23,7 +24,10 @@ import {
   Award,
   Upload,
   Image as ImageIcon,
-  Star
+  Star,
+  Smile,
+  Meh,
+  Receipt
 } from 'lucide-react';
 import {
   BarChart,
@@ -37,9 +41,12 @@ import {
   Pie,
   Cell,
   AreaChart,
-  Area
+  Area,
+  LineChart,
+  Line
 } from 'recharts';
-import { auth, db, addProject } from '../lib/firebase';
+import { auth, db, addProject, updateProject } from '../lib/firebase';
+import BillingView from './BillingView';
 import { 
   signInWithPopup, 
   GoogleAuthProvider, 
@@ -60,14 +67,15 @@ import {
   Timestamp,
   serverTimestamp
 } from 'firebase/firestore';
+import PropertyPalsLogo from './PropertyPalsLogo';
 
-// Admin Portal for ProPals
+// Admin Portal for PropertyPals
 export default function AdminPortal() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'projects' | 'testimonials' | 'estimator'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'projects' | 'testimonials' | 'estimator' | 'billing'>('dashboard');
   
   // Data State
   const [leads, setLeads] = useState<any[]>([]);
@@ -162,7 +170,7 @@ export default function AdminPortal() {
           <div className="w-20 h-20 bg-primary-900 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-xl rotate-3">
             <LayoutDashboard className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-display font-black text-primary-900 uppercase italic mb-4 tracking-tighter">Admin Portal</h1>
+          <h1 className="text-3xl font-display font-extrabold text-primary-900 mb-4 tracking-tight">Admin Portal</h1>
           <p className="text-slate-500 mb-8 font-medium">Access your project management dashboard and customer leads.</p>
           
           {loginError && (
@@ -214,13 +222,14 @@ export default function AdminPortal() {
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
       <aside className="w-72 bg-primary-900 text-white flex flex-col p-8 fixed h-full z-20 shadow-2xl">
-        <div className="flex items-center gap-4 mb-16">
-          <div className="w-10 h-10 bg-accent-orange rounded flex items-center justify-center shrink-0">
-            <LayoutDashboard className="w-6 h-6 text-white" />
-          </div>
+        <div className="flex items-center gap-3 mb-12">
+          <PropertyPalsLogo size={42} showText={false} />
           <div>
-            <h2 className="font-display font-black uppercase italic tracking-tighter leading-none">ProPals</h2>
-            <p className="text-[10px] font-black uppercase tracking-widest text-white/50">Admin Suite</p>
+            <div className="flex items-baseline leading-none">
+              <span className="text-xl font-extrabold tracking-tight text-white">Property</span>
+              <span className="text-xl font-black tracking-tight text-accent-orange ml-0.5">Pals</span>
+            </div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-white/50 mt-1">Admin Suite</p>
           </div>
         </div>
 
@@ -256,6 +265,12 @@ export default function AdminPortal() {
             active={activeTab === 'estimator'} 
             onClick={() => setActiveTab('estimator')} 
           />
+          <SidebarLink 
+            icon={<Receipt size={18} />} 
+            label="Invoices & Quotes" 
+            active={activeTab === 'billing'} 
+            onClick={() => setActiveTab('billing')} 
+          />
         </nav>
 
         <div className="mt-auto pt-8 border-t border-white/10">
@@ -283,6 +298,7 @@ export default function AdminPortal() {
           {activeTab === 'projects' && <ProjectsView key="projects" projects={projects} />}
           {activeTab === 'testimonials' && <TestimonialsView key="testimonials" testimonials={testimonials} />}
           {activeTab === 'estimator' && <CostEstimatorView key="estimator" />}
+          {activeTab === 'billing' && <BillingView key="billing" leads={leads} />}
         </AnimatePresence>
       </main>
     </div>
@@ -352,6 +368,21 @@ function DashboardView({ leads, projects, setActiveTab }: any) {
     }).length
   }));
 
+  const conversionTrendData = last6Months.map(m => {
+    const leadsInMonth = leads.filter((l: any) => {
+      const d = l.createdAt?.toDate ? l.createdAt.toDate() : null;
+      return d && months[d.getMonth()] === m;
+    });
+    const completedInMonth = leadsInMonth.filter((l: any) => l.status === 'completed');
+    const rate = leadsInMonth.length > 0 ? Math.round((completedInMonth.length / leadsInMonth.length) * 100) : 0;
+    return {
+      name: m,
+      rate,
+      totalLeads: leadsInMonth.length,
+      completed: completedInMonth.length
+    };
+  });
+
   const COLORS = ['#0F172A', '#F97316', '#3B82F6', '#10B981', '#6366F1'];
 
   return (
@@ -363,7 +394,7 @@ function DashboardView({ leads, projects, setActiveTab }: any) {
     >
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-5xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-2 leading-none">Welcome Back</h1>
+          <h1 className="text-5xl font-display font-extrabold text-primary-900 tracking-tight mb-2 leading-none font-black">Welcome Back</h1>
           <p className="text-slate-500 font-medium">Here's what's happening with your business today.</p>
         </div>
         <div className="bg-white px-6 py-3 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4 text-xs font-black uppercase tracking-widest">
@@ -496,6 +527,93 @@ function DashboardView({ leads, projects, setActiveTab }: any) {
         </div>
       </div>
 
+      {/* Conversion Rate Analytics Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 bg-white p-10 rounded-2xl border border-slate-100 shadow-sm animate-fade-in">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h3 className="text-lg font-black text-primary-900 uppercase tracking-tight flex items-center gap-2">
+                <CheckCircle2 size={20} className="text-accent-blue" />
+                Conversion Rate Trend (Last 6 Months)
+              </h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">
+                Percentage of monthly customer leads successfully converted to completed projects
+              </p>
+            </div>
+            <div className="bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl flex items-center">
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary-900">
+                Average Rate: {conversionRate}%
+              </span>
+            </div>
+          </div>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={conversionTrendData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 900, fill: '#94A3B8' }}
+                  dy={10}
+                />
+                <YAxis 
+                  domain={[0, 100]}
+                  tickFormatter={(val) => `${val}%`}
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 900, fill: '#94A3B8' }}
+                />
+                <Tooltip 
+                  formatter={(value: any) => [`${value}%`, 'Conversion Rate']}
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    border: 'none', 
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                    fontSize: '10px',
+                    fontWeight: '900',
+                    textTransform: 'uppercase'
+                  }} 
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="rate" 
+                  stroke="#3B82F6" 
+                  strokeWidth={4} 
+                  activeDot={{ r: 8, fill: '#3B82F6', stroke: 'white', strokeWidth: 2 }}
+                  dot={{ r: 4, fill: 'white', stroke: '#3B82F6', strokeWidth: 2 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-slate-50 p-10 rounded-2xl border border-slate-100 flex flex-col justify-between">
+          <div>
+            <h4 className="text-xs font-black uppercase tracking-widest text-primary-900 mb-6 flex items-center gap-2">
+              <span className="w-2 h-2 bg-accent-blue rounded-full animate-pulse" />
+              Monthly Conversion Funnel
+            </h4>
+            
+            <div className="space-y-4">
+              {conversionTrendData.map((item) => (
+                <div key={item.name} className="flex items-center justify-between border-b border-slate-200/40 pb-3 last:border-0 last:pb-0">
+                  <div>
+                    <span className="text-xs font-black text-primary-900 uppercase">{item.name}</span>
+                    <span className="text-[10px] text-slate-400 block font-bold mt-0.5">
+                      {item.completed} of {item.totalLeads} leads converted
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-black text-accent-blue">{item.rate}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         <div className="bg-white rounded-2xl border border-slate-100 p-10 shadow-sm">
           <div className="flex justify-between items-center mb-10">
@@ -590,7 +708,7 @@ function StatCard({ title, value, icon, color }: any) {
         {icon}
       </div>
       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{title}</p>
-      <p className="text-3xl font-display font-black text-primary-900 italic tracking-tighter">{value}</p>
+      <p className="text-3xl font-display font-bold text-primary-900 tracking-tight">{value}</p>
     </div>
   );
 }
@@ -624,6 +742,12 @@ function QuickActionBtn({ icon, label, description, color, onClick }: any) {
 }
 
 function LeadsView({ leads }: any) {
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showTrends, setShowTrends] = useState<boolean>(true);
+
   const updateStatus = async (id: string, newStatus: string) => {
     try {
       await updateDoc(doc(db, 'leads', id), { status: newStatus });
@@ -641,6 +765,70 @@ function LeadsView({ leads }: any) {
     }
   };
 
+  const getLeadDate = (lead: any) => {
+    if (lead.createdAt?.toDate) {
+      return lead.createdAt.toDate();
+    }
+    if (lead.createdAt) {
+      return new Date(lead.createdAt);
+    }
+    return null;
+  };
+
+  // Extract years dynamically
+  const years = Array.from(
+    new Set(
+      leads.map((lead: any) => {
+        const d = getLeadDate(lead);
+        return d ? d.getFullYear().toString() : null;
+      }).filter(Boolean)
+    )
+  ).sort((a: any, b: any) => b - a);
+
+  const months = [
+    { value: '0', label: 'January' },
+    { value: '1', label: 'February' },
+    { value: '2', label: 'March' },
+    { value: '3', label: 'April' },
+    { value: '4', label: 'May' },
+    { value: '5', label: 'June' },
+    { value: '6', label: 'July' },
+    { value: '7', label: 'August' },
+    { value: '8', label: 'September' },
+    { value: '9', label: 'October' },
+    { value: '10', label: 'November' },
+    { value: '11', label: 'December' }
+  ];
+
+  // Apply filters
+  const filteredLeads = leads.filter((lead: any) => {
+    const d = getLeadDate(lead);
+    
+    const yearMatch = selectedYear === 'all' || (d && d.getFullYear().toString() === selectedYear);
+    const monthMatch = selectedMonth === 'all' || (d && d.getMonth().toString() === selectedMonth);
+    const statusMatch = selectedStatus === 'all' || lead.status === selectedStatus;
+
+    const textStr = `${lead.name || ''} ${lead.email || ''} ${lead.phone || ''} ${lead.service || ''}`.toLowerCase();
+    const searchMatch = searchQuery.trim() === '' || textStr.includes(searchQuery.toLowerCase());
+
+    return yearMatch && monthMatch && statusMatch && searchMatch;
+  });
+
+  const chartYear = selectedYear === 'all' ? (years[0] || new Date().getFullYear().toString()) : selectedYear;
+
+  const monthlyCounts = Array.from({ length: 12 }, (_, monthIdx) => {
+    const monthLabel = months[monthIdx].label.substring(0, 3);
+    const count = leads.filter((lead: any) => {
+      const d = getLeadDate(lead);
+      return d && d.getFullYear().toString() === chartYear && d.getMonth() === monthIdx;
+    }).length;
+
+    return {
+      name: monthLabel,
+      Leads: count
+    };
+  });
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -650,13 +838,161 @@ function LeadsView({ leads }: any) {
     >
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-5xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-2 leading-none">Customer Leads</h1>
+          <h1 className="text-5xl font-display font-extrabold text-primary-900 tracking-tight mb-2 leading-none font-black">Customer Leads</h1>
           <p className="text-slate-500 font-medium">Manage and respond to project inquiries.</p>
         </div>
         <div className="flex gap-4">
-          <button className="bg-white border border-slate-100 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest text-primary-900 flex items-center gap-2 shadow-sm">
-            <Filter size={14} /> Filter
+          <button 
+            onClick={() => setShowTrends(!showTrends)}
+            className={`px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm border transition-all ${
+              showTrends 
+                ? 'bg-primary-900 border-primary-900 text-white' 
+                : 'bg-white border-slate-100 text-primary-900'
+            }`}
+          >
+            <TrendingUp size={14} /> {showTrends ? 'Hide Chart' : 'Show Chart'}
           </button>
+        </div>
+      </div>
+
+      {/* Dynamic Lead Generation Trends Chart */}
+      {showTrends && leads.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm"
+        >
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="text-md font-black text-primary-900 uppercase tracking-tight flex items-center gap-2">
+                <TrendingUp size={18} className="text-accent-orange" />
+                Monthly Lead Generation Trends ({chartYear})
+              </h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
+                Detailed flow diagram of customer inquiries over the year {chartYear}
+              </p>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest bg-slate-50 py-1.5 px-3 rounded text-slate-500 font-bold border border-slate-100">
+              Total {chartYear} Leads: {leads.filter((l: any) => getLeadDate(l)?.getFullYear().toString() === chartYear).length}
+            </span>
+          </div>
+          <div className="h-[200px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={monthlyCounts}>
+                <defs>
+                  <linearGradient id="colorLeadsKey" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#F97316" stopOpacity={0.15}/>
+                    <stop offset="95%" stopColor="#F97316" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 900, fill: '#94A3B8' }}
+                  dy={10}
+                />
+                <YAxis 
+                  allowDecimals={false}
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 900, fill: '#94A3B8' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    border: 'none', 
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                    fontSize: '10px',
+                    fontWeight: '900',
+                    textTransform: 'uppercase'
+                  }} 
+                />
+                <Area type="monotone" dataKey="Leads" stroke="#F97316" strokeWidth={3} fillOpacity={1} fill="url(#colorLeadsKey)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Filters and Search Bar */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <input 
+              type="text"
+              placeholder="Search leads by name, email, phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-lg text-sm font-medium focus:ring-2 focus:ring-accent-orange outline-none transition-all placeholder:text-slate-400"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-3 w-full md:w-auto justify-end">
+            {/* Year Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Year:</span>
+              <select 
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="bg-slate-50 border border-slate-100 rounded-lg text-xs font-black text-primary-900 uppercase tracking-tight py-2.5 px-4 outline-none focus:ring-2 focus:ring-accent-orange cursor-pointer"
+              >
+                <option value="all">All Years</option>
+                {years.map((yr: any) => (
+                  <option key={yr} value={yr}>{yr}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Month Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Month:</span>
+              <select 
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-slate-50 border border-slate-100 rounded-lg text-xs font-black text-primary-900 uppercase tracking-tight py-2.5 px-4 outline-none focus:ring-2 focus:ring-accent-orange cursor-pointer"
+              >
+                <option value="all">All Months</option>
+                {months.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status:</span>
+              <select 
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="bg-slate-50 border border-slate-100 rounded-lg text-xs font-black text-primary-900 uppercase tracking-tight py-2.5 px-4 outline-none focus:ring-2 focus:ring-accent-orange cursor-pointer"
+              >
+                <option value="all">All Status</option>
+                <option value="new">New</option>
+                <option value="contacted">Contacted</option>
+                <option value="in-progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+
+            {/* Reset Button */}
+            {(selectedYear !== 'all' || selectedMonth !== 'all' || selectedStatus !== 'all' || searchQuery !== '') && (
+              <button 
+                onClick={() => {
+                  setSelectedYear('all');
+                  setSelectedMonth('all');
+                  setSelectedStatus('all');
+                  setSearchQuery('');
+                }}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all"
+                title="Clear Filters"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -672,7 +1008,7 @@ function LeadsView({ leads }: any) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {leads.map((lead: any) => (
+            {filteredLeads.map((lead: any) => (
               <tr key={lead.id} className="hover:bg-slate-50/50 transition-colors">
                 <td className="px-8 py-6">
                   <p className="font-black text-primary-900 uppercase tracking-tight text-sm">{lead.name}</p>
@@ -727,11 +1063,11 @@ function LeadsView({ leads }: any) {
             ))}
           </tbody>
         </table>
-        {leads.length === 0 && (
+        {filteredLeads.length === 0 && (
           <div className="py-24 text-center">
             <MessageSquare size={48} className="mx-auto text-slate-200 mb-6" />
             <h4 className="text-lg font-black text-primary-900 uppercase tracking-tight">No Leads Found</h4>
-            <p className="text-slate-400 text-sm max-w-xs mx-auto mt-2">When customers use your contact form, they will appear here.</p>
+            <p className="text-slate-400 text-sm max-w-xs mx-auto mt-2">No leads match the specified filter criteria.</p>
           </div>
         )}
       </div>
@@ -743,6 +1079,7 @@ function ProjectsView({ projects }: any) {
   const [isAdding, setIsAdding] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadMethod, setUploadMethod] = useState<'url' | 'file'>('file');
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newProject, setNewProject] = useState({
     title: '',
     category: 'Remodel',
@@ -754,8 +1091,50 @@ function ProjectsView({ projects }: any) {
     image: '',
     gallery: [] as string[],
     beforeImage: '',
-    videoUrl: ''
+    videoUrl: '',
+    progress: 0,
+    milestones: [] as { id: string; title: string; completed: boolean }[]
   });
+
+  const resetProjectForm = () => {
+    setEditingId(null);
+    setNewProject({
+      title: '',
+      category: 'Remodel',
+      description: '',
+      services: '',
+      tags: '',
+      materials: '',
+      completionDate: '',
+      image: 'https://images.unsplash.com/photo-1556912177-c540306ea5ae?auto=format&fit=crop&q=80&w=1200',
+      gallery: [] as string[],
+      beforeImage: '',
+      videoUrl: '',
+      progress: 0,
+      milestones: []
+    });
+  };
+
+  const handleEditProject = (project: any) => {
+    setEditingId(project.id);
+    setNewProject({
+      title: project.title || '',
+      category: project.category || 'Remodel',
+      description: project.description || '',
+      services: project.services ? project.services.join(', ') : '',
+      tags: project.tags ? project.tags.join(', ') : '',
+      materials: project.materials ? project.materials.join(', ') : '',
+      completionDate: project.completionDate || '',
+      image: project.image || '',
+      gallery: project.gallery || [],
+      beforeImage: project.beforeImage || '',
+      videoUrl: project.videoUrl || '',
+      progress: project.progress !== undefined ? project.progress : 0,
+      milestones: project.milestones || []
+    });
+    setUploadMethod(project.image && project.image.startsWith('data:') ? 'file' : 'url');
+    setIsAdding(true);
+  };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>, target: 'image' | 'gallery' = 'image') => {
     const files = e.target.files;
@@ -812,24 +1191,27 @@ function ProjectsView({ projects }: any) {
     try {
       const projectData = {
         ...newProject,
-        services: newProject.services.split(',').map(s => s.trim()).filter(s => s !== ''),
-        tags: newProject.tags.split(',').map(t => t.trim().toLowerCase()).filter(t => t !== ''),
-        materials: newProject.materials.split(',').map(m => m.trim()).filter(m => m !== ''),
+        services: typeof newProject.services === 'string' 
+          ? newProject.services.split(',').map(s => s.trim()).filter(s => s !== '')
+          : newProject.services,
+        tags: typeof newProject.tags === 'string'
+          ? newProject.tags.split(',').map(t => t.trim().toLowerCase()).filter(t => t !== '')
+          : newProject.tags,
+        materials: typeof newProject.materials === 'string'
+          ? newProject.materials.split(',').map(m => m.trim()).filter(m => m !== '')
+          : newProject.materials,
+        progress: typeof newProject.progress === 'number' ? newProject.progress : parseInt(newProject.progress) || 0,
+        milestones: newProject.milestones || []
       };
-      await addProject(projectData);
+
+      if (editingId) {
+        await updateProject(editingId, projectData);
+      } else {
+        await addProject(projectData);
+      }
+
       setIsAdding(false);
-      setNewProject({
-        title: '',
-        category: 'Remodel',
-        description: '',
-        services: '',
-        tags: '',
-        materials: '',
-        completionDate: '',
-        image: 'https://images.unsplash.com/photo-1556912177-c540306ea5ae?auto=format&fit=crop&q=80&w=1200',
-        beforeImage: '',
-        videoUrl: ''
-      });
+      resetProjectForm();
     } catch (error) {
       console.error('Save failed:', error);
     } finally {
@@ -848,11 +1230,14 @@ function ProjectsView({ projects }: any) {
     >
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-5xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-2 leading-none">Project Portfolio</h1>
-          <p className="text-slate-500 font-medium">Add and manage showcase projects.</p>
+          <h1 className="text-5xl font-display font-extrabold text-primary-900 tracking-tight mb-2 leading-none">Project Portfolio</h1>
+          <p className="text-slate-500 font-medium">Add and manage showcase projects with progress tracking.</p>
         </div>
         <button 
-          onClick={() => setIsAdding(true)}
+          onClick={() => {
+            resetProjectForm();
+            setIsAdding(true);
+          }}
           className="bg-accent-orange text-white px-8 py-4 rounded-lg text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3 shadow-xl shadow-accent-orange/20 hover:bg-black transition-all"
         >
           <Plus size={16} /> Add New Project
@@ -861,11 +1246,14 @@ function ProjectsView({ projects }: any) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {projects.map((project: any) => (
-          <div key={project.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm group">
+          <div key={project.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm group flex flex-col h-full">
             <div className="h-48 relative">
               <img src={project.image} alt="" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                <button className="p-3 bg-white rounded-full text-primary-900 hover:bg-accent-orange hover:text-white transition-all shadow-lg">
+                <button 
+                  onClick={() => handleEditProject(project)}
+                  className="p-3 bg-white rounded-full text-primary-900 hover:bg-accent-orange hover:text-white transition-all shadow-lg"
+                >
                   <Edit size={18} />
                 </button>
                 <button 
@@ -876,17 +1264,45 @@ function ProjectsView({ projects }: any) {
                 </button>
               </div>
             </div>
-            <div className="p-8">
-              <span className="text-[10px] font-black uppercase tracking-widest text-accent-blue bg-accent-blue/10 px-2 py-0.5 rounded mb-3 inline-block">
+            <div className="p-8 flex flex-col flex-grow">
+              <span className="text-[10px] font-black uppercase tracking-widest text-accent-blue bg-accent-blue/10 px-2 py-0.5 rounded mb-3 inline-block self-start">
                 {project.category}
               </span>
-              <h3 className="font-display font-black text-primary-900 uppercase tracking-tight text-xl mb-4 italic leading-tight">
+              <h3 className="font-display font-bold text-primary-900 tracking-tight text-xl mb-4 leading-tight">
                 {project.title}
               </h3>
               <p className="text-slate-500 text-xs line-clamp-2 mb-6 font-medium">
                 {project.description}
               </p>
-              <div className="flex justify-between items-center pt-6 border-t border-slate-50">
+
+              {/* Progress & Milestones Tracking Block */}
+              <div className="mt-auto pt-4 border-t border-slate-50 space-y-3">
+                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                  <span className="text-slate-400">Project Progress</span>
+                  <span className="text-accent-orange font-bold font-mono">{project.progress || 0}%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden relative">
+                  <div 
+                    className="h-full bg-accent-orange rounded-full transition-all duration-500"
+                    style={{ width: `${project.progress || 0}%` }}
+                  />
+                </div>
+                
+                {project.milestones && project.milestones.length > 0 ? (
+                  <div className="flex justify-between items-center text-[9px] font-semibold text-slate-400 uppercase tracking-wider">
+                    <span>Milestones Completed</span>
+                    <span className="font-bold text-slate-500 font-mono">
+                      {project.milestones.filter((m: any) => m.completed).length} / {project.milestones.length}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-[9px] font-semibold text-slate-300 uppercase tracking-wider">
+                    No milestones configured
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center pt-4 mt-4 border-t border-slate-50">
                 <div className="flex -space-x-1">
                   {project.tags?.slice(0, 3).map((tag: string) => (
                     <div key={tag} className="bg-slate-100 text-slate-400 text-[8px] font-black uppercase px-2 py-0.5 rounded border border-white">
@@ -911,7 +1327,7 @@ function ProjectsView({ projects }: any) {
         </div>
       )}
 
-      {/* Add Project Modal */}
+      {/* Add/Edit Project Modal */}
       <AnimatePresence>
         {isAdding && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -919,7 +1335,10 @@ function ProjectsView({ projects }: any) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsAdding(false)}
+              onClick={() => {
+                setIsAdding(false);
+                resetProjectForm();
+              }}
               className="absolute inset-0 bg-primary-900/95 backdrop-blur-sm"
             />
             
@@ -930,14 +1349,17 @@ function ProjectsView({ projects }: any) {
               className="bg-white w-full max-w-xl rounded-xl p-8 md:p-12 relative z-10 max-h-[90vh] overflow-y-auto shadow-2xl"
             >
               <button 
-                onClick={() => setIsAdding(false)}
+                onClick={() => {
+                  setIsAdding(false);
+                  resetProjectForm();
+                }}
                 className="absolute top-6 right-6 text-slate-400 hover:text-primary-900 transition-colors"
               >
                 <X size={24} />
               </button>
 
-              <h3 className="text-3xl font-display font-black text-primary-900 uppercase tracking-tighter mb-8 italic leading-none">
-                Add New Project
+              <h3 className="text-3xl font-display font-extrabold text-primary-900 tracking-tight mb-8 leading-tight">
+                {editingId ? 'Edit Project' : 'Add New Project'}
               </h3>
 
               <form onSubmit={handleSaveProject} className="space-y-6">
@@ -1097,6 +1519,149 @@ function ProjectsView({ projects }: any) {
                   />
                 </div>
 
+                {/* Progress & Milestones Section */}
+                <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 space-y-6">
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-primary-900 font-bold">Project Progress Percentage</label>
+                      <span className="text-sm font-black font-mono text-accent-orange">{newProject.progress || 0}%</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <input 
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={newProject.progress || 0}
+                        onChange={e => setNewProject(p => ({ ...p, progress: parseInt(e.target.value) || 0 }))}
+                        className="flex-grow h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-accent-orange"
+                      />
+                      <input 
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={newProject.progress || 0}
+                        onChange={e => {
+                          let val = parseInt(e.target.value);
+                          if (isNaN(val)) val = 0;
+                          if (val > 100) val = 100;
+                          if (val < 0) val = 0;
+                          setNewProject(p => ({ ...p, progress: val }));
+                        }}
+                        className="w-16 px-2 py-1.5 bg-white border border-slate-200 rounded text-center text-xs font-bold font-mono outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Milestones Array Manager */}
+                  <div className="space-y-4 pt-4 border-t border-slate-200/60">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-primary-900 font-bold">Milestones & Phases List</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newMs = {
+                            id: Math.random().toString(36).substr(2, 9),
+                            title: '',
+                            completed: false
+                          };
+                          setNewProject(p => ({
+                            ...p,
+                            milestones: [...(p.milestones || []), newMs]
+                          }));
+                        }}
+                        className="text-accent-orange hover:text-orange-600 text-[9px] font-black uppercase tracking-widest flex items-center gap-1 transition-all"
+                      >
+                        <PlusCircle size={14} /> Add Phase
+                      </button>
+                    </div>
+
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">
+                      Define the phases of this construction project and check them off as work progresses.
+                    </p>
+
+                    <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                      {(newProject.milestones || []).map((ms, idx) => (
+                        <div key={ms.id} className="flex gap-2.5 items-center bg-white p-2.5 rounded-lg border border-slate-200/60">
+                          <input 
+                            type="checkbox"
+                            checked={ms.completed}
+                            onChange={e => {
+                              const updated = (newProject.milestones || []).map((m, i) => {
+                                if (i === idx) {
+                                  return { ...m, completed: e.target.checked };
+                                }
+                                return m;
+                              });
+                              
+                              const completedCount = updated.filter(m => m.completed).length;
+                              const totalCount = updated.length;
+                              const newPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : newProject.progress;
+                              
+                              setNewProject(p => ({
+                                ...p,
+                                milestones: updated,
+                                progress: newPct
+                              }));
+                            }}
+                            className="w-4 h-4 rounded text-accent-orange focus:ring-accent-orange cursor-pointer"
+                          />
+                          <input 
+                            required
+                            type="text"
+                            value={ms.title}
+                            onChange={e => {
+                              const updated = (newProject.milestones || []).map((m, i) => {
+                                if (i === idx) {
+                                  return { ...m, title: e.target.value };
+                                }
+                                return m;
+                              });
+                              setNewProject(p => ({ ...p, milestones: updated }));
+                            }}
+                            placeholder={`Phase ${idx+1} (e.g. Foundation Pour)`}
+                            className="flex-grow bg-slate-50 px-3 py-1.5 rounded text-xs font-bold outline-none border border-slate-100"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = (newProject.milestones || []).filter((_, i) => i !== idx);
+                              const completedCount = updated.filter(m => m.completed).length;
+                              const totalCount = updated.length;
+                              const newPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+                              
+                              setNewProject(p => ({
+                                ...p,
+                                milestones: updated,
+                                progress: newPct
+                              }));
+                            }}
+                            className="text-slate-300 hover:text-red-500 p-1.5 transition-all"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+
+                      {(newProject.milestones || []).length === 0 && (
+                        <div className="py-4 text-center border-2 border-dashed border-slate-200 rounded-lg">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">No custom milestones configured yet.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {(newProject.milestones || []).length > 0 && (
+                      <div className="flex gap-4 justify-between items-center text-[9px] font-black uppercase text-slate-400 bg-slate-100 p-2.5 rounded">
+                        <span>Milestone Calculation:</span>
+                        <span className="text-primary-900 font-bold">
+                          {(newProject.milestones || []).filter(m => m.completed).length} / {(newProject.milestones || []).length} phases done &rarr; {
+                            Math.round(((newProject.milestones || []).filter(m => m.completed).length / (newProject.milestones || []).length) * 100)
+                          }%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <button 
                   type="submit"
                   disabled={isSubmitting}
@@ -1114,6 +1679,10 @@ function ProjectsView({ projects }: any) {
 }
 
 function TestimonialsView({ testimonials }: any) {
+  const [selectedSentiment, setSelectedSentiment] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
   const updateStatus = async (id: string, newStatus: string) => {
     try {
       await updateDoc(doc(db, 'testimonials', id), { status: newStatus });
@@ -1131,6 +1700,35 @@ function TestimonialsView({ testimonials }: any) {
     }
   };
 
+  const analyzeSentiment = (quote: string): 'Positive' | 'Neutral' => {
+    if (!quote) return 'Neutral';
+    const text = quote.toLowerCase();
+    const positiveKeywords = [
+      'great', 'awesome', 'excellent', 'amazing', 'perfect', 'fantastic', 
+      'outstanding', 'love', 'loved', 'highly', 'professional', 'recommend', 
+      'recommends', 'happy', 'best', 'good', 'brilliant', 'wonderful', 
+      'pleased', 'exceeded', 'clean', 'tidy', 'neat', 'superb', 'beautiful',
+      'impressed', 'stellar', 'perfectly', 'top', 'quality', 'efficient',
+      'professionalism', 'friendly', 'courteous', 'punctual', 'reliable'
+    ];
+    const hasPositiveKeyword = positiveKeywords.some(word => text.includes(word));
+    return hasPositiveKeyword ? 'Positive' : 'Neutral';
+  };
+
+  const totalCount = testimonials.length;
+  const pendingCount = testimonials.filter((t: any) => t.status === 'pending').length;
+  const positiveCount = testimonials.filter((t: any) => analyzeSentiment(t.quote) === 'Positive').length;
+  const neutralCount = testimonials.filter((t: any) => analyzeSentiment(t.quote) === 'Neutral').length;
+
+  const filteredTestimonials = testimonials.filter((t: any) => {
+    const sentiment = analyzeSentiment(t.quote);
+    const sentimentMatch = selectedSentiment === 'all' || sentiment.toLowerCase() === selectedSentiment;
+    const statusMatch = selectedStatus === 'all' || t.status === selectedStatus;
+    const textStr = `${t.name || ''} ${t.role || ''} ${t.location || ''} ${t.quote || ''}`.toLowerCase();
+    const searchMatch = searchQuery.trim() === '' || textStr.includes(searchQuery.toLowerCase());
+    return sentimentMatch && statusMatch && searchMatch;
+  });
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -1140,8 +1738,104 @@ function TestimonialsView({ testimonials }: any) {
     >
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-5xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-2 leading-none">Client Reviews</h1>
+          <h1 className="text-5xl font-display font-extrabold text-primary-900 tracking-tight mb-2 leading-none">Client Reviews</h1>
           <p className="text-slate-500 font-medium">Manage customer feedback and testimonials.</p>
+        </div>
+      </div>
+
+      {/* Sentiment & Status metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-fade-in">
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Feedback</p>
+          <p className="text-3xl font-display font-bold text-primary-900 mt-2">{totalCount}</p>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Positive Sentiment</p>
+            <p className="text-3xl font-display font-bold text-green-600 mt-2">{positiveCount}</p>
+          </div>
+          <div className="bg-green-50 p-3 rounded-xl text-green-600 border border-green-100">
+            <Smile size={24} className="stroke-[2.5]" />
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Neutral Sentiment</p>
+            <p className="text-3xl font-display font-bold text-slate-500 mt-2">{neutralCount}</p>
+          </div>
+          <div className="bg-slate-50 p-3 rounded-xl text-slate-500 border border-slate-100">
+            <Meh size={24} className="stroke-[2.5]" />
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pending Approval</p>
+            <p className="text-3xl font-display font-bold text-orange-500 mt-2">{pendingCount}</p>
+          </div>
+          <div className="bg-orange-50 p-3 rounded-xl text-orange-500 border border-orange-100">
+            <Clock size={24} />
+          </div>
+        </div>
+      </div>
+
+      {/* Toolbar with Filter & Search */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <input 
+              type="text"
+              placeholder="Search reviews by name, client, content..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-lg text-sm font-medium focus:ring-2 focus:ring-accent-orange outline-none transition-all placeholder:text-slate-400"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-3 w-full md:w-auto justify-end">
+            {/* Sentiment Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sentiment:</span>
+              <select 
+                value={selectedSentiment}
+                onChange={(e) => setSelectedSentiment(e.target.value)}
+                className="bg-slate-50 border border-slate-100 rounded-lg text-xs font-black text-primary-900 uppercase tracking-tight py-2.5 px-4 outline-none focus:ring-2 focus:ring-accent-orange cursor-pointer"
+              >
+                <option value="all">All Sentiments</option>
+                <option value="positive">Positive Only</option>
+                <option value="neutral">Neutral Only</option>
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status:</span>
+              <select 
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="bg-slate-50 border border-slate-100 rounded-lg text-xs font-black text-primary-900 uppercase tracking-tight py-2.5 px-4 outline-none focus:ring-2 focus:ring-accent-orange cursor-pointer"
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+              </select>
+            </div>
+
+            {/* Clear Filters Button */}
+            {(selectedSentiment !== 'all' || selectedStatus !== 'all' || searchQuery !== '') && (
+              <button 
+                onClick={() => {
+                  setSelectedSentiment('all');
+                  setSelectedStatus('all');
+                  setSearchQuery('');
+                }}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all"
+                title="Clear Filters"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1152,60 +1846,80 @@ function TestimonialsView({ testimonials }: any) {
               <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Client</th>
               <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Feedback</th>
               <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Rating</th>
+              <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Sentiment</th>
               <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
               <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {testimonials.map((t: any) => (
-              <tr key={t.id} className="hover:bg-slate-50/50 transition-colors">
-                <td className="px-8 py-6">
-                  <p className="font-black text-primary-900 uppercase tracking-tight text-sm">{t.name}</p>
-                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">{t.role}</p>
-                  <p className="text-[10px] text-accent-blue font-black uppercase tracking-widest">{t.location}</p>
-                </td>
-                <td className="px-8 py-6 max-w-md">
-                  <p className="text-slate-600 text-xs italic line-clamp-3 font-medium">"{t.quote}"</p>
-                </td>
-                <td className="px-8 py-6">
-                  <div className="flex">
-                    {[...Array(5)].map((_, i) => (
-                      <Star 
-                        key={i} 
-                        className={`w-3 h-3 ${i < (t.rating || 0) ? 'text-accent-orange fill-accent-orange' : 'text-slate-200'}`} 
-                      />
-                    ))}
-                  </div>
-                </td>
-                <td className="px-8 py-6">
-                  <select 
-                    value={t.status}
-                    onChange={(e) => updateStatus(t.id, e.target.value)}
-                    className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full outline-none appearance-none cursor-pointer border-none ${
+            {filteredTestimonials.map((t: any) => {
+              const sentiment = analyzeSentiment(t.quote);
+              return (
+                <tr key={t.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-8 py-6">
+                    <p className="font-black text-primary-900 uppercase tracking-tight text-sm">{t.name}</p>
+                    <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">{t.role}</p>
+                    <p className="text-[10px] text-accent-blue font-black uppercase tracking-widest">{t.location}</p>
+                    {t.invoiceNumber && (
+                      <span className="inline-flex items-center gap-1 mt-1 bg-green-50 text-green-700 px-2.5 py-1 rounded text-[8px] font-black uppercase tracking-widest border border-green-100">
+                        <CheckCircle2 size={10} className="stroke-[3]" /> Auto-Verified ({t.invoiceNumber})
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-8 py-6 max-w-md">
+                    <p className="text-slate-600 text-xs italic line-clamp-3 font-medium">"{t.quote}"</p>
+                  </td>
+                  <td className="px-8 py-6">
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star 
+                          key={i} 
+                          className={`w-3 h-3 ${i < (t.rating || 0) ? 'text-accent-orange fill-accent-orange' : 'text-slate-200'}`} 
+                        />
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-8 py-6">
+                    {sentiment === 'Positive' ? (
+                      <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-green-100">
+                        <Smile size={12} className="stroke-[3] text-green-600" /> Positive
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-slate-200">
+                        <Meh size={12} className="stroke-[3] text-slate-500" /> Neutral
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-8 py-6">
+                    <select 
+                      value={t.status}
+                      onChange={(e) => updateStatus(t.id, e.target.value)}
+                      className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full outline-none appearance-none cursor-pointer border-none ${
                         t.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'
-                    }`}
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="approved">Approved</option>
-                  </select>
-                </td>
-                <td className="px-8 py-6 text-right">
-                  <button 
-                    onClick={() => deleteTestimonial(t.id)}
-                    className="p-2 text-slate-300 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
+                      }`}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                    </select>
+                  </td>
+                  <td className="px-8 py-6 text-right">
+                    <button 
+                      onClick={() => deleteTestimonial(t.id)}
+                      className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
-        {testimonials.length === 0 && (
+        {filteredTestimonials.length === 0 && (
           <div className="py-24 text-center">
             <MessageSquare size={48} className="mx-auto text-slate-200 mb-6" />
             <h4 className="text-lg font-black text-primary-900 uppercase tracking-tight">No Reviews Found</h4>
-            <p className="text-slate-400 text-sm max-w-xs mx-auto mt-2">When clients submit feedback, it will appear here for your review.</p>
+            <p className="text-slate-400 text-sm max-w-xs mx-auto mt-2">No reviews match your selected filter criteria.</p>
           </div>
         )}
       </div>
@@ -1260,7 +1974,7 @@ function CostEstimatorView() {
       className="space-y-12"
     >
       <div>
-        <h1 className="text-5xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-2 leading-none">Cost Estimator</h1>
+        <h1 className="text-5xl font-display font-extrabold text-primary-900 tracking-tight mb-2 leading-none">Cost Estimator</h1>
         <p className="text-slate-500 font-medium">Quick estimate tool based on standard South African rates (ZAR).</p>
       </div>
 
@@ -1325,7 +2039,7 @@ function CostEstimatorView() {
 
             <div className="space-y-2">
               <p className="text-[10px] font-black uppercase tracking-widest text-accent-blue">Estimated Total</p>
-              <p className="text-6xl font-display font-black tracking-tighter italic leading-none">
+              <p className="text-6xl font-display font-extrabold tracking-tight leading-none">
                 R {total.toLocaleString()}
               </p>
             </div>

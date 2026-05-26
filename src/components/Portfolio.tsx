@@ -86,7 +86,7 @@ export default function Portfolio() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-primary-900 uppercase tracking-tighter italic leading-[0.95]"
+              className="text-4xl md:text-5xl lg:text-6xl font-display font-extrabold text-primary-900 tracking-tight leading-tight"
             >
               Recent Projects That <br /> Showcase Our Excellence
             </motion.h2>
@@ -161,7 +161,7 @@ export default function Portfolio() {
                       <span className="text-accent-blue font-black text-[10px] uppercase tracking-[0.2em] mb-2 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500">
                         {project.category}
                       </span>
-                      <h3 className="text-2xl md:text-3xl font-display font-black uppercase tracking-tight text-white group-hover:text-accent-orange transition-colors">
+                      <h3 className="text-2xl md:text-3xl font-display font-bold tracking-tight text-white group-hover:text-accent-orange transition-colors">
                         {project.title}
                       </h3>
                     </div>
@@ -300,7 +300,7 @@ export default function Portfolio() {
                 <span className="text-accent-orange font-black text-[10px] uppercase tracking-[0.2em] mb-4 inline-block">
                   {selectedProject.category}
                 </span>
-                <h3 className="text-3xl md:text-4xl font-display font-black text-primary-900 uppercase tracking-tighter mb-6 italic leading-none">
+                <h3 className="text-3xl md:text-4xl font-display font-extrabold text-primary-900 tracking-tight mb-6 leading-tight">
                   {selectedProject.title}
                 </h3>
                 

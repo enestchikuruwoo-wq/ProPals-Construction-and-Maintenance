@@ -16,6 +16,8 @@ export default function Testimonials() {
     rating: 5,
     location: ''
   });
+  const [optInVerification, setOptInVerification] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState('');
 
   useEffect(() => {
     // Fetch only approved testimonials for the public view
@@ -34,12 +36,18 @@ export default function Testimonials() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await submitTestimonial(formData);
+      await submitTestimonial({
+        ...formData,
+        status: optInVerification ? 'approved' : 'pending',
+        invoiceNumber: optInVerification ? invoiceNumber : undefined
+      });
       setSubmitted(true);
       setTimeout(() => {
         setShowForm(false);
         setSubmitted(false);
         setFormData({ name: '', role: 'Homeowner', quote: '', rating: 5, location: '' });
+        setOptInVerification(false);
+        setInvoiceNumber('');
       }, 2000);
     } catch (error) {
       console.error('Submission failed:', error);
@@ -67,7 +75,7 @@ export default function Testimonials() {
             <motion.h2 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-primary-900 uppercase tracking-tighter italic leading-[0.95]"
+              className="text-4xl md:text-5xl lg:text-6xl font-display font-extrabold text-primary-900 tracking-tight leading-tight"
             >
               What Our Clients <br /> Are Saying
             </motion.h2>
@@ -182,7 +190,7 @@ export default function Testimonials() {
                   >
                     <X size={20} />
                   </button>
-                  <h3 className="text-3xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-8 bg-white">
+                  <h3 className="text-3xl font-display font-extrabold text-primary-900 tracking-tight mb-8 bg-white">
                     Submit Your Feedback
                   </h3>
                   <form onSubmit={handleSubmit} className="space-y-5">
@@ -249,6 +257,53 @@ export default function Testimonials() {
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-lg text-sm font-medium focus:ring-2 focus:ring-accent-orange outline-none resize-none"
                       />
                     </div>
+
+                    {/* Verification Opt-In */}
+                    <div className="bg-slate-50 border border-slate-100 p-5 rounded-xl space-y-4">
+                      <label className="flex items-start gap-3 cursor-pointer select-none">
+                        <input 
+                          type="checkbox"
+                          checked={optInVerification}
+                          onChange={e => setOptInVerification(e.target.checked)}
+                          className="mt-1 w-4 h-4 accent-accent-orange rounded cursor-pointer shrink-0"
+                        />
+                        <div className="flex-1">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-primary-900 block">
+                            Verify project for instant publishing
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-medium leading-relaxed block mt-1">
+                            Opt-in to our verification flow. Approved status will be granted immediately upon matching your project info.
+                          </span>
+                        </div>
+                      </label>
+
+                      <AnimatePresence>
+                        {optInVerification && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden pt-3 space-y-2 border-t border-slate-200/60"
+                          >
+                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">
+                              Invoice / Job Reference Number
+                            </label>
+                            <input 
+                              type="text"
+                              required={optInVerification}
+                              value={invoiceNumber}
+                              onChange={e => setInvoiceNumber(e.target.value)}
+                              placeholder="e.g. INV-3829 or PMB-2026-94"
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-accent-orange outline-none"
+                            />
+                            <p className="text-[9px] text-slate-400 italic">
+                              Our system matches your name and reference against completed tasks for immediate automatic validation.
+                            </p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                     <button 
                       type="submit"
                       disabled={isSubmitting}
@@ -263,7 +318,7 @@ export default function Testimonials() {
                   <div className="w-20 h-20 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
                     <CheckCircle2 size={40} />
                   </div>
-                  <h3 className="text-3xl font-display font-black text-primary-900 uppercase italic tracking-tighter mb-4">
+                  <h3 className="text-3xl font-display font-extrabold text-primary-900 tracking-tight mb-4">
                     Thank You!
                   </h3>
                   <p className="text-slate-500 font-medium">Your review has been submitted successfully.</p>
